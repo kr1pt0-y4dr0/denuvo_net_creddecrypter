@@ -20,7 +20,7 @@ namespace DenuvoNetCredDecrypter
         {
             System.Console.OutputEncoding = Encoding.UTF8;
 
-            IUserInterface ui = new ConsoleUserInterface();
+            IUserInterface ui = new ConsoleUserInterface(new ProductLogo());
 
             try
             {

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using DenuvoNetCredDecrypter.Abstractions;
 
@@ -9,12 +10,32 @@ namespace DenuvoNetCredDecrypter.Infrastructure.Console
     /// </summary>
     public sealed class ConsoleUserInterface : IUserInterface
     {
+        private readonly ProductLogo _logo;
+
+        public ConsoleUserInterface(ProductLogo logo)
+        {
+            _logo = logo ?? throw new ArgumentNullException(nameof(logo));
+        }
+
         public void ShowBanner(string title, string version)
         {
             System.Console.WriteLine();
-            ConsoleTheme.WriteLineColor(ConsoleTheme.Accent, "  " + title + "  v" + version);
-            ConsoleTheme.WriteLineColor(ConsoleTheme.Dim, "  " + new string('-', title.Length + version.Length + 6));
+            ConsoleTheme.WriteGradient(_logo.Render(title, SafeWindowWidth()));
+            ConsoleTheme.WriteLineColor(ConsoleTheme.Dim, "  " + title + "  v" + version);
             System.Console.WriteLine();
+        }
+
+        private static int SafeWindowWidth()
+        {
+            try
+            {
+                var width = System.Console.WindowWidth;
+                return width > 0 ? width : 120;
+            }
+            catch (IOException)
+            {
+                return 120;
+            }
         }
 
         public void ShowStep(int index, int total, string title)

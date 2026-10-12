@@ -21,7 +21,7 @@ namespace DenuvoNetCredDecrypter.Tests
         [Fact]
         public void Writes_labelled_lines_to_the_id_named_file()
         {
-            var record = new CredentialRecord("my-id", "alice", "pw", "HWID", "some hardware");
+            var record = new CredentialRecord("my-id", "alice", "pw", "HWID", "some hardware", "steam");
 
             _store.Save(record, overwrite: false);
 
@@ -38,14 +38,14 @@ namespace DenuvoNetCredDecrypter.Tests
         public void Exists_reflects_the_file_system()
         {
             Assert.False(_store.Exists("absent"));
-            _store.Save(new CredentialRecord("present", "l", "p", "h", "i"), overwrite: false);
+            _store.Save(new CredentialRecord("present", "l", "p", "h", "i", "steam"), overwrite: false);
             Assert.True(_store.Exists("present"));
         }
 
         [Fact]
         public void Refuses_to_overwrite_when_not_allowed()
         {
-            var record = new CredentialRecord("dup", "l", "p", "h", "i");
+            var record = new CredentialRecord("dup", "l", "p", "h", "i", "steam");
             _store.Save(record, overwrite: false);
 
             Assert.Throws<IOException>(() => _store.Save(record, overwrite: false));

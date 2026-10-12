@@ -48,7 +48,7 @@ namespace DenuvoNetCredDecrypter.App
             _ui.ShowField("HWID", computation.Hwid);
 
             _ui.ShowStep(2, TotalSteps, "Entering the request data");
-            var id = _ui.PromptRequired("id (output file name and API login)", null);
+            var id = _ui.PromptRequired("ID (From your Order Info)", null);
             var hwid = _ui.PromptRequired("hwid", null);
             var hardwareInfo = _ui.PromptRequired("hardware info", null);
 
@@ -96,6 +96,7 @@ namespace DenuvoNetCredDecrypter.App
 
             _ui.ShowStep(4, TotalSteps, "Decrypting the credentials");
             var login = response.Result?.AuthLogin ?? string.Empty;
+            var type = response.Result?.Type ?? string.Empty;
             string password;
             try
             {
@@ -108,10 +109,11 @@ namespace DenuvoNetCredDecrypter.App
             }
 
             _ui.ShowField("login", login);
-            _ui.ShowField("password", new string('*', password.Length));
+            _ui.ShowField("password", password);
+            _ui.ShowField("type", type);
 
             _ui.ShowStep(5, TotalSteps, "Saving the result");
-            var record = new CredentialRecord(id, login, password, hwid, hardwareInfo);
+            var record = new CredentialRecord(id, login, password, hwid, hardwareInfo, type);
             var path = _store.GetPath(id);
             if (_store.Exists(id))
             {
