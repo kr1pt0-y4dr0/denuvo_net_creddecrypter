@@ -43,6 +43,7 @@ ScaffoldingReadMe.txt
 ~$*
 *~
 CodeCoverage/
+.vs/
 
 # MSBuild Binary and Structured Log
 *.binlog
@@ -55,3 +56,6 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Generated credential dumps (<id>.txt)
+*.txt
