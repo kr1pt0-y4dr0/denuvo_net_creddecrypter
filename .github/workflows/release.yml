@@ -1,0 +1,100 @@
+name: Release
+
+# Builds, tests and publishes a release whenever source code lands in the
+# default branch. The version is derived from the latest "v*" git tag with the
+# patch component incremented, so every meaningful change produces a new release
+# without editing any file by hand. Documentation-only changes do not trigger a
+# release because the push is filtered to the "src" folder.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+  workflow_dispatch:
+
+# Required to push the new tag and create the GitHub Release.
+permissions:
+  contents: write
+
+# Never cancel a release in progress; serialise runs so two quick pushes cannot
+# compute the same next version.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, test and release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history and tags are needed to compute the next version.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore DenuvoNetCredDecrypter.sln
+
+      - name: Determine next version
+        id: version
+        shell: pwsh
+        run: |
+          git fetch --tags --force
+          $last = git describe --tags --abbrev=0 --match 'v*' 2>$null
+          if (-not $last) {
+            $tag = 'v0.1.0'
+          } else {
+            $v = [version]($last.TrimStart('v'))
+            $tag = 'v{0}.{1}.{2}' -f $v.Major, $v.Minor, ($v.Build + 1)
+          }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$($tag.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+          Write-Host "Previous tag: '$last' -> next tag: '$tag'"
+
+      - name: Test
+        run: dotnet test DenuvoNetCredDecrypter.sln -c Release --no-restore
+
+      - name: Publish
+        run: >
+          dotnet publish
+          src/DenuvoNetCredDecrypter/DenuvoNetCredDecrypter.csproj
+          -c Release -f net472 --no-restore
+          -p:Version=${{ steps.version.outputs.version }}
+          -o publish
+
+      - name: Package
+        shell: pwsh
+        run: >
+          Compress-Archive
+          -Path publish/*
+          -DestinationPath "DenuvoNetCredDecrypter-${{ steps.version.outputs.tag }}.zip"
+
+      - name: Create and push tag
+        shell: pwsh
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "${{ steps.version.outputs.tag }}"
+          "DenuvoNetCredDecrypter-${{ steps.version.outputs.tag }}.zip"
+          --title "${{ steps.version.outputs.tag }}"
+          --generate-notes

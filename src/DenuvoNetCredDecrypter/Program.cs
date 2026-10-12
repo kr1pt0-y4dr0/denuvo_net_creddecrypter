@@ -59,9 +59,6 @@ namespace DenuvoNetCredDecrypter
         {
             var handler = new HttpClientHandler
             {
-                // The remote service uses a certificate that is not trusted by the
-                // local machine, so validation is intentionally disabled.
-                ServerCertificateCustomValidationCallback = (sender, certificate, chain, errors) => true,
                 SslProtocols = SslProtocols.Tls12
             };
 
