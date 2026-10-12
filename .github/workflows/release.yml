@@ -54,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           git fetch --tags --force
-          $last = git describe --tags --abbrev=0 --match 'v*' 2>$null
+          $last = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
           if (-not $last) {
             $tag = 'v0.1.0'
           } else {
