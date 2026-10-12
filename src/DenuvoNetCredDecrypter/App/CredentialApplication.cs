@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DenuvoNetCredDecrypter.Abstractions;
@@ -14,7 +15,7 @@ namespace DenuvoNetCredDecrypter.App
     {
         private const int TotalSteps = 5;
         private const string Title = "DenuvoNetCredDecrypter";
-        private const string Version = "1.0.0";
+        private static readonly string Version = ReadVersion();
 
         private readonly IUserInterface _ui;
         private readonly IHwidProvider _hwidProvider;
@@ -136,6 +137,30 @@ namespace DenuvoNetCredDecrypter.App
 
             _ui.ShowSuccess("Saved credentials to " + path);
             return 0;
+        }
+
+        /// <summary>
+        /// Reads the product version from the assembly metadata so it stays in
+        /// sync with the version stamped at build time (for example by the
+        /// release workflow). Falls back to the assembly version, then "0.0.0".
+        /// </summary>
+        private static string ReadVersion()
+        {
+            var assembly = typeof(CredentialApplication).Assembly;
+
+            var informational = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                .InformationalVersion;
+
+            if (!string.IsNullOrEmpty(informational))
+            {
+                // Strip the source-revision suffix ("+<sha>") when present.
+                var value = informational!;
+                var separator = value.IndexOf('+');
+                return separator >= 0 ? value.Substring(0, separator) : value;
+            }
+
+            return assembly.GetName().Version?.ToString(3) ?? "0.0.0";
         }
     }
 }

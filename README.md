@@ -1,4 +1,8 @@
+[![Release](https://img.shields.io/github/v/release/kr1pt0-y4dr0/denuvo_net_creddecrypter?label=release)](https://github.com/kr1pt0-y4dr0/denuvo_net_creddecrypter/releases/latest)
+
 # DenuvoNetCredDecrypter: безопасная альтернатива для получения учётных данных офлайн-активации
+
+> **Скачать последнюю версию:** [Releases](https://github.com/kr1pt0-y4dr0/denuvo_net_creddecrypter/releases/latest)
 
 ## Зачем нужна эта утилита
 
