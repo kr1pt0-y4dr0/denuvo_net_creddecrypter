@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,32 +32,22 @@ namespace DenuvoNetCredDecrypter.Infrastructure.Console
             {
                 var frame = Frames[index++ % Frames.Length];
                 System.Console.Write("\r  " + _message + " " + frame);
-
-                try
-                {
-                    Task.Delay(90, token).Wait(token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (AggregateException)
-                {
-                    break;
-                }
+                Thread.Sleep(90);
             }
         }
 
         public void Dispose()
         {
             _cancellation.Cancel();
+
             try
             {
                 _loop.Wait();
             }
-            catch (AggregateException)
+            catch (AggregateException ex)
             {
-                // The loop is cancelled as part of shutdown; nothing to report.
+                // The render loop may fault if the console is torn down mid-write.
+                Debug.WriteLine("Spinner render loop faulted: " + ex.Message);
             }
 
             System.Console.Write("\r" + new string(' ', _message.Length + 6) + "\r");

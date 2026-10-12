@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Management;
 using DenuvoNetCredDecrypter.Abstractions;
 using DenuvoNetCredDecrypter.Domain;
@@ -55,9 +56,9 @@ namespace DenuvoNetCredDecrypter.Services
                     searcher.Dispose();
                 }
             }
-            catch (ManagementException)
+            catch (ManagementException ex)
             {
-                // The class is unavailable on this machine; fall back to empty values.
+                Debug.WriteLine($"WMI class '{className}' could not be queried: {ex.Message}");
             }
 
             return null;
@@ -69,8 +70,9 @@ namespace DenuvoNetCredDecrypter.Services
             {
                 return obj[property]?.ToString() ?? string.Empty;
             }
-            catch (ManagementException)
+            catch (ManagementException ex)
             {
+                Debug.WriteLine($"WMI property '{property}' could not be read: {ex.Message}");
                 return string.Empty;
             }
         }
