@@ -62,53 +62,42 @@ namespace DenuvoNetCredDecrypter.App
             _ui.ShowInfo("Request payload: " + checkRequest.ToJson());
 
             _ui.ShowStep(3, TotalSteps, "Checking that the credentials are available");
-            ApiCallResult checkCall;
-            try
+            ApiCallResult? checkCall = await SendAsync(checkRequest, cancellationToken);
+            if (checkCall == null)
             {
-                checkCall = await _ui
-                    .RunWithSpinnerAsync("POST /api.php", () => _apiClient.RequestCredentialsAsync(checkRequest, cancellationToken))
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _ui.ShowError("The request failed: " + ex.Message);
                 return 1;
             }
-
-            _ui.ShowField("HTTP status", ((int)checkCall.StatusCode).ToString());
-            _ui.ShowRawResponse(checkCall.RawBody);
 
             if (!checkCall.Response.Success)
             {
-                _ui.ShowError("The account check failed. The credentials are not available.");
+                _ui.ShowError("The account check did not pass.");
                 ShowResponseFailures(checkCall.Response);
                 return 1;
             }
+
+            _ui.ShowSuccess("The account is available.");
 
             var request = CredentialRequest.ForCredentials(hwid, id);
             _ui.ShowInfo("Request payload: " + request.ToJson());
 
             _ui.ShowStep(4, TotalSteps, "Requesting credentials from the server");
-            ApiCallResult call;
-            try
+            ApiCallResult? call = await SendAsync(request, cancellationToken);
+            if (call == null)
             {
-                call = await _ui
-                    .RunWithSpinnerAsync("POST /api.php", () => _apiClient.RequestCredentialsAsync(request, cancellationToken))
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _ui.ShowError("The request failed: " + ex.Message);
                 return 1;
             }
-
-            _ui.ShowField("HTTP status", ((int)call.StatusCode).ToString());
-            _ui.ShowRawResponse(call.RawBody);
 
             CredentialResponse response = call.Response;
             if (!response.Success)
             {
                 _ui.ShowError("The server refused the request.");
+                ShowResponseFailures(response);
+                return 1;
+            }
+
+            if (response.Result == null)
+            {
+                _ui.ShowError("The server reported success but returned no credentials.");
                 ShowResponseFailures(response);
                 return 1;
             }
@@ -155,6 +144,29 @@ namespace DenuvoNetCredDecrypter.App
 
             _ui.ShowSuccess("Saved credentials to " + path);
             return 0;
+        }
+
+        /// <summary>
+        /// Sends one request to the service, reporting the HTTP status and the
+        /// raw body. Returns <c>null</c> when the call itself failed.
+        /// </summary>
+        private async Task<ApiCallResult?> SendAsync(CredentialRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var call = await _ui
+                    .RunWithSpinnerAsync("POST /api.php", () => _apiClient.RequestCredentialsAsync(request, cancellationToken))
+                    .ConfigureAwait(false);
+
+                _ui.ShowField("HTTP status", ((int)call.StatusCode).ToString());
+                _ui.ShowRawResponse(call.RawBody);
+                return call;
+            }
+            catch (Exception ex)
+            {
+                _ui.ShowError("The request failed: " + ex.Message);
+                return null;
+            }
         }
 
         /// <summary>

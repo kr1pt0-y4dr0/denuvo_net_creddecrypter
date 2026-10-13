@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using DenuvoNetCredDecrypter.App;
@@ -59,7 +58,8 @@ namespace DenuvoNetCredDecrypter.Tests
             Assert.Equal("MACHINE-HWID", store.SavedRecord.Hwid);
             Assert.Equal("my hardware", store.SavedRecord.HardwareInfo);
             Assert.Equal("CIPHER", decryptor.LastCipher);
-            Assert.Single(ui.Successes);
+            Assert.Contains("The account is available.", ui.Successes);
+            Assert.Contains("Saved credentials to id-1.txt", ui.Successes);
 
             Assert.Equal(2, api.Requests.Count);
             Assert.Equal("checkAccount", api.Requests[0].Act);
@@ -99,6 +99,24 @@ namespace DenuvoNetCredDecrypter.Tests
             Assert.Null(store.SavedRecord);
             Assert.Single(api.Requests);
             Assert.Equal("checkAccount", api.Requests[0].Act);
+            Assert.Equal("hw", api.Requests[0].Pc);
+            Assert.Single(ui.Errors);
+        }
+
+        [Fact]
+        public async Task Returns_failure_when_credentials_are_reported_but_result_is_missing()
+        {
+            var ui = new FakeUserInterface("id-1", "MACHINE-HWID", "hw");
+            var api = new FakeApiClient(Ok(CheckOk()), Ok(new CredentialResponse { Success = true, Result = null }));
+            var decryptor = new FakeDecryptor("p");
+            var store = new FakeCredentialStore();
+
+            var app = new CredentialApplication(ui, new FakeHwidProvider(DetectedHwid()), api, decryptor, store);
+            var exitCode = await app.RunAsync();
+
+            Assert.Equal(1, exitCode);
+            Assert.Null(store.SavedRecord);
+            Assert.Null(decryptor.LastCipher);
             Assert.Single(ui.Errors);
         }
 
