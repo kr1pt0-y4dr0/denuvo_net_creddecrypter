@@ -15,12 +15,12 @@ namespace DenuvoNetCredDecrypter.Tests
         private const string ApiUrl = "https://example.test/api.php";
 
         [Fact]
-        public async Task Posts_json_with_expected_method_url_and_payload()
+        public async Task Posts_reqcreds_without_pc()
         {
             var handler = new StubHttpMessageHandler(_ => Json("{\"success\":true,\"result\":{}}"));
             var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
 
-            await client.RequestCredentialsAsync(new CredentialRequest("HW", "user-1"), default);
+            await client.RequestCredentialsAsync(CredentialRequest.ForCredentials("HW", "user-1"), default);
 
             Assert.NotNull(handler.LastRequest);
             Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
@@ -31,6 +31,23 @@ namespace DenuvoNetCredDecrypter.Tests
             Assert.Equal("reqcreds", (string?)body["act"]);
             Assert.Equal("HW", (string?)body["hwid"]);
             Assert.Equal("user-1", (string?)body["login"]);
+            Assert.Null(body["pc"]);
+        }
+
+        [Fact]
+        public async Task Posts_checkAccount_with_pc()
+        {
+            var handler = new StubHttpMessageHandler(_ => Json("{\"success\":true}"));
+            var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
+
+            await client.RequestCredentialsAsync(
+                CredentialRequest.ForCheckAccount("HW", "user-1", "PC info"), default);
+
+            var body = JObject.Parse(handler.LastRequestBody!);
+            Assert.Equal("checkAccount", (string?)body["act"]);
+            Assert.Equal("HW", (string?)body["hwid"]);
+            Assert.Equal("user-1", (string?)body["login"]);
+            Assert.Equal("PC info", (string?)body["pc"]);
         }
 
         [Fact]
@@ -41,7 +58,7 @@ namespace DenuvoNetCredDecrypter.Tests
             var handler = new StubHttpMessageHandler(_ => Json(json));
             var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
 
-            var result = await client.RequestCredentialsAsync(new CredentialRequest("HW", "user-1"), default);
+            var result = await client.RequestCredentialsAsync(CredentialRequest.ForCredentials("HW", "user-1"), default);
 
             Assert.Equal(HttpStatusCode.OK, result.StatusCode);
             Assert.Equal(json, result.RawBody);
@@ -57,7 +74,7 @@ namespace DenuvoNetCredDecrypter.Tests
             var handler = new StubHttpMessageHandler(_ => Json("{\"success\":false,\"errors\":\"bad key\"}"));
             var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
 
-            var result = await client.RequestCredentialsAsync(new CredentialRequest("HW", "user-1"), default);
+            var result = await client.RequestCredentialsAsync(CredentialRequest.ForCredentials("HW", "user-1"), default);
 
             Assert.False(result.Response.Success);
             Assert.Equal(JTokenType.String, result.Response.Errors!.Type);
@@ -70,10 +87,24 @@ namespace DenuvoNetCredDecrypter.Tests
             var handler = new StubHttpMessageHandler(_ => Json("{\"success\":false,\"errors\":[\"e1\",\"e2\"]}"));
             var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
 
-            var result = await client.RequestCredentialsAsync(new CredentialRequest("HW", "user-1"), default);
+            var result = await client.RequestCredentialsAsync(CredentialRequest.ForCredentials("HW", "user-1"), default);
 
             Assert.False(result.Response.Success);
             Assert.Equal(JTokenType.Array, result.Response.Errors!.Type);
+        }
+
+        [Fact]
+        public async Task Parses_errors_returned_as_an_object()
+        {
+            var handler = new StubHttpMessageHandler(_ => Json("{\"success\":false,\"errors\":{\"404\":\"ID nope Not found\"}}"));
+            var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
+
+            var result = await client.RequestCredentialsAsync(
+                CredentialRequest.ForCheckAccount("HW", "user-1", "pc"), default);
+
+            Assert.False(result.Response.Success);
+            Assert.Equal(JTokenType.Object, result.Response.Errors!.Type);
+            Assert.Equal("ID nope Not found", (string?)result.Response.Errors["404"]);
         }
 
         [Fact]
@@ -86,7 +117,7 @@ namespace DenuvoNetCredDecrypter.Tests
             var client = new CredentialApiClient(new HttpClient(handler), ApiUrl);
 
             await Assert.ThrowsAsync<System.InvalidOperationException>(
-                () => client.RequestCredentialsAsync(new CredentialRequest("HW", "user-1"), default));
+                () => client.RequestCredentialsAsync(CredentialRequest.ForCredentials("HW", "user-1"), default));
         }
 
         private static HttpResponseMessage Json(string json)
